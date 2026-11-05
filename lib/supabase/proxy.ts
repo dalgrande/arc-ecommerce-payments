@@ -28,7 +28,7 @@ const ACCOUNT_PREFIX = "/account";
 
 // Admin console - gated by the server-set `app_metadata.role` claim (not email),
 // which the user cannot edit, so it's a real authz boundary. The admin user is
-// bootstrapped on server boot (see lib/supabase/seed-admin.ts).
+// provisioned out of band; lib/supabase/seed-admin.ts only checks it on boot.
 const ADMIN_PREFIX = "/admin";
 
 // Checkout - a shopper-only action. Browsing the catalog is public, but buying
