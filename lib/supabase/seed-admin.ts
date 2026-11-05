@@ -22,8 +22,8 @@ import { createClient } from "@supabase/supabase-js";
  * Demo admin bootstrap.
  *
  * Runs once on server boot (see `instrumentation.ts`) and guarantees a single
- * admin account exists. Idempotent: ensures the `admin` role claim is set on the
- * configured administrator identity.
+ * admin account exists. Read-only: it checks that the configured administrator exists and
+ * carries the `admin` role claim, and logs what is missing.
  *
  * Security note — this function no longer provisions a credential. It previously created
  * (or reset the role of) `admin@admin.com` with the hardcoded password `123456` on every
@@ -105,11 +105,13 @@ export async function seedAdmin() {
       return;
     }
 
+    // Never grant the role here: with email confirmation off (as this demo suggests), anyone
+    // who registers ADMIN_EMAIL first would be promoted to the account that can capture/refund.
     if (existing.app_metadata?.role !== "admin") {
-      await admin.auth.admin.updateUserById(existing.id, {
-        app_metadata: { role: "admin" },
-      });
-      console.log(`[seed-admin] Granted the admin role to ${adminEmail}.`);
+      console.warn(
+        `[seed-admin] ${adminEmail} exists but lacks app_metadata.role = "admin". ` +
+          "Set the role in Supabase to grant admin access.",
+      );
     }
   } catch (err) {
     // Don't crash the server if Supabase is unreachable at boot - the admin

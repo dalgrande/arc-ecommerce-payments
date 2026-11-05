@@ -174,18 +174,17 @@ Authorization is keyed off `app_metadata.role`, not the email address. `app_meta
 
 
 
-### Demo admin (auto-seeded)
+### Admin account
 
-A single admin account is bootstrapped on server boot (`instrumentation.ts` runs `lib/supabase/seed-admin.ts`). It is idempotent: created if missing, otherwise its `admin` role claim is ensured. This requires `SUPABASE_SECRET_KEY` (the service-role key) and is skipped with a warning if that is unset.
+The admin role can capture, void and refund orders, so the app never creates or promotes an admin itself. Set one up once:
 
+1. Sign up (or create the user in the Supabase dashboard) with the email you want to use.
+2. In Supabase, set that user's `app_metadata` to `{ "role": "admin" }` (dashboard, or `auth.admin.updateUserById` with the service-role key).
+3. Set `ADMIN_EMAIL` in `.env.local` to the same address.
 
-| Field    | Value             |
-| -------- | ----------------- |
-| Email    | `admin@admin.com` |
-| Password | `123456`          |
+On boot, `lib/supabase/seed-admin.ts` checks that this user exists and has the role, and logs a warning if not. It needs `SUPABASE_SECRET_KEY` and is skipped with a warning if that is unset.
 
-
-These credentials are hardcoded on purpose. This is a demo where zero setup matters more than secrecy. Disable email confirmation in the Supabase dashboard under **Authentication, Sign In / Providers, Email, "Confirm email" off.**
+For local testing you can disable email confirmation in the Supabase dashboard under **Authentication, Sign In / Providers, Email, "Confirm email" off.**
 
 ## Environment Variables
 
@@ -195,7 +194,8 @@ All variables live in `.env.local`. The setup script writes the wallet IDs/addre
 | Variable                                                             | Purpose                                      | How to get it                                                                |
 | -------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------- |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`  | Auth and orders                              | Supabase project settings, or `npm run db:status` for local                  |
-| `SUPABASE_SECRET_KEY`                                                | Admin auto-seed, server only                 | Service-role key. Never expose to the browser                                |
+| `SUPABASE_SECRET_KEY`                                                | Admin check on boot, server only             | Service-role key. Never expose to the browser                                |
+| `ADMIN_EMAIL`                                                        | Which account is the admin                   | The email of the user you gave `app_metadata.role = "admin"`                  |
 | `NEXT_PUBLIC_ARC_RPC_URL`                                            | Wallet and reads                             | Defaults to `https://rpc.testnet.arc.network`                                |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`                               | RainbowKit QR / mobile                       | [cloud.reown.com](https://cloud.reown.com). Injected wallets work without it |
 | `CIRCLE_API_KEY` / `CIRCLE_ENTITY_SECRET`                            | Operator backend, setup script               | Circle Console. Backend only, never commit                                   |
@@ -325,7 +325,7 @@ curl -X POST https://api.circle.com/v1/w3s/contracts/event-monitors \
   }'
 ```
 
-Set `WEBHOOK_SECRET=<your-WEBHOOK_SECRET>` in `.env.local`, then uncomment the HMAC-SHA256 signature verification block at the top of `app/api/webhooks/payments/route.ts`. Circle signs each push request with the shared secret; the handler verifies it before processing.
+Set `WEBHOOK_SECRET=<your-WEBHOOK_SECRET>` in `.env.local`. Circle signs each push request with the shared secret; the handler verifies `x-scp-signature` (HMAC-SHA256) before processing and answers `503` while the secret is unset.
 
 ## **Legal disclaimer**
 
